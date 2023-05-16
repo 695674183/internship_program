@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title></title>
+	<meta charset="UTF-8">
+	<link rel="stylesheet" href="../../element-ui-2.13.0/lib/theme-chalk/index.css" />
+	<script type="text/javascript" src="../../vue/vue-v2.6.10.js"></script>
+	<script type="text/javascript" src="../../element-ui-2.13.0/lib/index.js"></script>
+	<script type="text/javascript" src="../../vue/axios-0.18.0.js"></script>
+</head>
+
+<body>
+	<div id="app">
+		<el-tag type="info" effect="dark" v-if="inputVisible" closable="true" :disable-transitions="disable"
+			@close="handleClose">用户管理</el-tag>
+		<div v-if="inputVisible">
+			<template>
+				<el-table :data="tableData" @selection-change="handleSelectionChange" size="medium"
+					highlight-current-row="true" style="width: 100%">
+					<el-table-column type="selection" width="55" prop="uid">
+					</el-table-column>
+					<el-table-column width="100px" label="序号" type="index">
+					</el-table-column>
+					<el-table-column label="用户账号" prop="username">
+					</el-table-column>
+					<el-table-column label="真实姓名" prop="name">
+					</el-table-column>
+					<el-table-column label="角色" prop="role">
+						<template slot-scope="{row}">
+							<span v-if="row.role==1">管理员</span>
+							<span v-if="row.role==2">总经理</span>
+							<span v-if="row.role==3">员工</span>
+						</template>
+					</el-table-column>
+					<el-table-column label="操作">
+						<template slot-scope="scope">
+							<el-button size="mini" @click="handleEdit(scope.$index, scope.row)">修改</el-button>
+							<el-button size="mini" type="danger" @click="handlelook(scope.$index, scope.row)">详情
+							</el-button>
+						</template>
+					</el-table-column>
+					<el-table-column align="left" width="200px">
+						<template slot="header" slot-scope="scope">
+							<el-input v-model="search" size="mini" @blur="handleUserList" placeholder="输入用户名称搜索" />
+						</template>
+					</el-table-column>
+				</el-table>
+			</template>
+			<br />
+			<el-row>
+				<el-button type="warning" @click="delAll()">删除选中</el-button>
+				<el-button type="primary"><a href="addUser.html" target="main"
+						style="text-decoration: none;color:white">添加用户</a></el-button>
+			</el-row>
+			<template>
+				<div class="block" align="right">
+					<el-pagination @size-change="handleSizeChange" :slot="tableData"
+						@current-change="handleCurrentChange" :current-page="currentPage" :page-sizes="[3, 4, 5, 6]"
+						:page-size="pageSize" layout="total, sizes, prev, pager, next, jumper, slot"
+						:total="totalCount">
+					</el-pagination>
+				</div>
+			</template>
+		</div>
+
+		<!-- 	修改 -->
+		<el-dialog title="修改用户" :visible.sync="dialogVisible" :close-on-click-modal="false" width="30%">
+
+			<el-form :model="ruleForm" :rules="rules" ref="ruleForm" label-width="100px" class="demo-ruleForm">
+				<el-form-item label="登录名" prop="username">
+					<el-input v-model="ruleForm.username" style="width: 210px;"></el-input>
+				</el-form-item>
+				<el-form-item label="密码" prop="password">
+					<el-input type="password" v-model="ruleForm.password" style="width: 210px;"></el-input>
+				</el-form-item>
+				<el-form-item label="真实姓名" prop="name">
+					<el-input v-model="ruleForm.name" style="width: 210px;"></el-input>
+				</el-form-item>
+				<el-form-item label="手机号码" prop="phone">
+					<el-input v-model="ruleForm.phone" style="width: 210px;"></el-input>
+				</el-form-item>
+				<el-form-item label="年龄" prop="age">
+					<el-input v-model.number="ruleForm.age" style="width: 210px;"></el-input>
+				</el-form-item>
+				<el-form-item label="性別" prop="sex">
+					<el-radio-group v-model="ruleForm.sex">
+						<el-radio :label="0">男</el-radio>
+						<el-radio :label="1">女</el-radio>
+					</el-radio-group>
+				</el-form-item>
+				<el-form-item label="状态" prop="status">
+					<el-radio-group v-model="ruleForm.status">
+						<el-radio :label="1">启用</el-radio>
+						<el-radio :label="2">禁用</el-radio>
+					</el-radio-group>
+				</el-form-item>
+				<el-form-item label="角色" prop="role">
+					<el-select v-model="ruleForm.role" placeholder="请选择活动区域">
+						<el-option label="管理员" :value="1"></el-option>
+						<el-option label="总经理" :value="2"></el-option>
+						<el-option label="用户" :value="3"></el-option>
+					</el-select>
+				</el-form-item>
+			</el-form>
+
+			<span slot="footer" class="dialog-footer">
+				<el-button @click="dialogVisible = false">取 消</el-button>
+				<el-button type="primary" @click="submitForm('ruleForm')">确 定</el-button>
+			</span>
+		</el-dialog>
+
+		<!-- 详情 -->
+		<el-dialog title="用户信息" :visible.sync="dialogVisible1" :close-on-click-modal="false" width="30%">
+			<el-form :model="ruleForm" :rules="rules" ref="ruleForm" label-width="100px" class="demo-ruleForm">
+				<el-form-item label="登录名" prop="username">
+					<el-input v-model="ruleForm.username" style="width: 210px;"></el-input>
+				</el-form-item>
+				<el-form-item label="密码" prop="password">
+					<el-input type="password" v-model="ruleForm.password" style="width: 210px;"></el-input>
+				</el-form-item>
+				<el-form-item label="真实姓名" prop="name">
+					<el-input v-model="ruleForm.name" style="width: 210px;"></el-input>
+				</el-form-item>
+				<el-form-item label="手机号码" prop="phone">
+					<el-input v-model="ruleForm.phone" style="width: 210px;"></el-input>
+				</el-form-item>
+				<el-form-item label="年龄" prop="age">
+					<el-input v-model.number="ruleForm.age" style="width: 210px;"></el-input>
+				</el-form-item>
+				<el-form-item label="性別" prop="sex">
+					<el-radio-group v-model="ruleForm.sex">
+						<el-radio :label="0">男</el-radio>
+						<el-radio :label="1">女</el-radio>
+					</el-radio-group>
+				</el-form-item>
+				<el-form-item label="状态" prop="status">
+					<el-radio-group v-model="ruleForm.status">
+						<el-radio :label="1">启用</el-radio>
+						<el-radio :label="2">禁用</el-radio>
+					</el-radio-group>
+				</el-form-item>
+				<el-form-item label="角色" prop="role">
+					<el-select v-model="ruleForm.role" placeholder="请选择活动区域">
+						<el-option label="管理员" :value="1"></el-option>
+						<el-option label="总经理" :value="2"></el-option>
+						<el-option label="用户" :value="3"></el-option>
+					</el-select>
+				</el-form-item>
+
+				<el-form-item label="创建时间">
+					<el-col>
+						<el-date-picker type="date" placeholder="选择日期" v-model="ruleForm.createtime"
+							style="width:215px;">
+						</el-date-picker>
+					</el-col>
+				</el-form-item>
+			</el-form>
+
+
+		</el-dialog>
+	</div>
+</body>
+<script>
+	axios.defaults.withCredentials = true
+	new Vue({
+		el: "#app",
+		data: {
+			/*分页相关*/
+			tableData: [],//当前页要展示的分页列表数据
+			search: '',//查询条件
+			pageSize: 3,//每页显示的记录数
+			currentPage: 1,//当前页码
+			totalCount: '',//总记录数
+			totalPage:'', // 总页码
+			/*批量删除*/
+			multipleSelection: [],//批量删除存放选中的复选框
+			delarr: [], //存放删除的数据
+			/*选项卡*/
+			inputVisible: true,
+			disable: false,
+			/* 对话框 */
+			dialogVisible: false,
+			dialogVisible1: false,
+			ruleForm: {
+				uid: '',
+				username: '',
+				password: '',
+				name: '',
+				phone: '',
+				status: '',
+				role: '',
+				age: '',
+				sex: '',
+				createtime: ''
+			},
+			rules: {
+				username: [
+					{ required: true, message: '请输入用户名称', trigger: 'blur' },
+					{ min: 3, max: 11, message: '长度在 3 到 5 个字符', trigger: 'blur' }
+				],
+				role: [
+					{ required: true, message: '请选择角色', trigger: 'change' }
+				],
+				name: [
+					{ required: true, message: '请输入真实姓名', trigger: 'blur' }
+				],
+				phone: [
+					{
+						required: true,
+						message: '请输入手机号码',
+						trigger: 'blur'
+					},
+					{
+						validator: function (rule, value, callback) {
+							if (/^1[34578]\d{9}$/.test(value) == false) {
+								callback(new Error("请输入正确的手机号"));
+							} else {
+								callback();
+							}
+						}, trigger: 'blur'
+					}
+				],
+				password: [
+					{
+						required: true,
+						message: '请输入密码',
+						trigger: 'blur'
+					}, {
+						min: 6,
+						max: 30,
+						message: '长度在 6 到 30 个字符'
+					}, {
+						pattern: /^(\w){6,20}$/,
+						message: '只能输入6-20个字母、数字、下划线'
+					}
+				],
+				status: [
+					{ required: true, message: '请选择状态', trigger: 'change' }
+				],
+				sex: [
+					{ required: true, message: '请选择性別', trigger: 'change' }
+				],
+				age: [
+					{ required: true, message: '年龄不能为空', trigger: 'blur' },
+					{
+						validator: function (rule, value, callback) {
+							if (!Number.isInteger(value)) {
+								callback(new Error('请输入数字值'));
+							} else {
+								if (value < 18) {
+									callback(new Error('必须年满18岁'));
+								} else {
+									callback();
+								}
+							}
+						}, trigger: 'blur'
+					}
+				],
+				createtime: [
+					{ type: 'date', required: true, message: '请选择日期', trigger: 'change' }
+				],
+			},
+		},
+		methods: {
+			// 点击关闭按钮
+			handleClose() {
+				this.inputVisible = false
+			},
+			// 点击修改按钮
+			handleEdit(index, row) {
+				// 1. 修改对话框显示
+				this.dialogVisible = true
+				// 2. scope.row 获取点击按钮的同一行的数据
+
+				// 将当前行数据 绑定ruleForm对象中   再去渲染修改页面的视图
+				this.ruleForm = row
+			},
+		
+			/* 点击详情按钮 */
+			handlelook(index, row) {
+				// 1. 显示详情对话框
+				this.dialogVisible1 = true
+
+				// 2. 将当前行的数据 绑定到详情对话框的表单中
+				this.ruleForm = row
+			},
+
+			/* 添加选中的复选框的值 */
+			handleSelectionChange(val) {
+				// 1. 接收选中的每一个复选框的值
+				this.multipleSelection = val
+			},
+			
+
+			// 删除选中按钮
+			delAll() {
+				// 1. 提示是否确认删除
+				this.$confirm("确定删除如下数据吗？",{type:"warning"}).then(()=>{
+					// 2. 确认删除
+					for(let i=0; i<this.multipleSelection.length;i++){
+						this.delarr.push(this.multipleSelection[i].uid) 
+					}
+					// 3. 发送axios请求后台删除
+					axios.get("http://localhost:8080/smallU_0301/user?method=delUser&uids="+this.delarr).then(resp => {
+						if(resp.data.code == 200){
+							// 删除成功
+							this.$message({
+								type:"success",
+								message:resp.data.message
+							})
+						}else{
+							// 删除失败
+							this.$message({
+								type:"warning",
+								message:resp.data.message
+							})
+						}
+
+						// 跳转到当前页面重新获取新数据
+						window.setTimeout("window.location.href='http://127.0.0.1:5500/smallU_back/html/User/index.html'", 1000);
+					})	
+
+
+				}).catch(()=>{
+					this.$message({
+						type: "warning",
+						message:"取消删除"
+					})
+				})
+			},
+		
+			/* 一页显示的个数发生变化 */
+			handleSizeChange: function (size) {
+				this.pageSize = size
+				this.handleUserList()
+			},
+			
+			/* 当前页发生变化 */
+			handleCurrentChange: function (currentPage) {
+				this.currentPage = currentPage
+				this.handleUserList()
+			},
+			
+			/* 点击修改中的确定 */
+			submitForm(formName) {
+				// 1. 校验修改页面
+				this.$refs[formName].validate(valid => {
+					if(valid){
+						// 2. 校验通过将表单数据提交到后台
+						let params = new URLSearchParams();
+						for(let key in this.ruleForm){
+							params.append(key, this.ruleForm[key]);
+						}
+
+						// 3. 发送axios请求
+						axios({
+							method: "post",
+							url: "http://localhost:8080/smallU_0301/user?method=updateUser",
+							data:params
+						}).then(resp => {
+							if(resp.data.code == 200){
+								/* 修改成功 */
+								this.$message({
+									type:"success",
+									message: resp.data.message
+								})
+								this.dialogVisible = false
+							}else{
+								/* 修改失败 */
+								this.$message({
+									type:"warning",
+									message: resp.data.message
+								})
+							}
+						})
+
+					}else{
+						// 校验失败
+						this.$message({
+							type:"warning",
+							message:"表单校验未通过"	
+						})
+					}
+				})
+			},
+		
+			// 从后台获取数据
+			handleUserList(){
+				let url = "http://localhost:8080/smallU_0301/user?method=findAllUserByPage&pageSize="+this.pageSize
+				// 添加搜索条件
+				if(this.search!=null && this.search.trim()!=''){
+					// this.currentPage = 1
+					url += "&search="+this.search
+				}
+				url += "&currentPage="+this.currentPage
+				
+				axios.get(url).then(resp => {
+					if(resp.data.code == 500){
+						this.$message({
+							type:"warning",
+							message: resp.data.message
+						})
+					}else{
+						this.tableData = resp.data.list
+						this.currentPage = resp.data.currentPage
+						this.pageSize = resp.data.pageSize
+						this.totalCount = resp.data.totalCount
+						this.totalPage = resp.data.totalPage
+						
+					}
+				})
+			}
+
+		},
+
+		// 钩子函数
+		created(){
+			this.handleUserList();
+		}
+
+	})
+</script>
+
+</html>

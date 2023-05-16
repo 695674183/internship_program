@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="../../element-ui-2.13.0/lib/theme-chalk/index.css" />
+    <script type="text/javascript" src="../../vue/vue-v2.6.10.js"></script>
+    <script type="text/javascript" src="../../element-ui-2.13.0/lib/index.js"></script>
+    <script type="text/javascript" src="../../vue/axios-0.18.0.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <el-tag type="info" effect="dark" v-if="inputVisible" closable="true" :disable-transitions="disable"
+            @close="handleClose">用户课程管理</el-tag>
+        <div v-if="inputVisible">
+            <template>
+                <el-table
+                    :data="tableData.filter(data => !search || data.user.name.toLowerCase().includes(search.toLowerCase()))"
+                    style="width: 100%" @selection-change="handleSelectionChange">
+                    <el-table-column type="selection" width="50">
+                    </el-table-column>
+                    <el-table-column label="序号" type="index" width="100px" prop="uid">
+                    </el-table-column>
+                    <el-table-column label="课程名称" prop="course.courseName">
+                    </el-table-column>
+                    <el-table-column label="选课人" prop="user.name">
+                    </el-table-column>
+                    <el-table-column align="right" width="200px">
+                        <template slot="header" slot-scope="scope">
+                            <el-input v-model="search" size="mini" placeholder="输入选课人搜索" />
+                        </template>
+                        <template slot-scope="scope">
+                            <el-button size="mini" @click="handleEdit(scope.$index, scope.row)">修改</el-button>
+                            <el-button size="mini" type="danger" @click="handleDelete(scope.$index, scope.row)">详情
+                            </el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </template>
+
+            <br />
+            <!--<el-row>
+                <el-button type="warning" @click="delAll()">删除选中</el-button>
+            </el-row>-->
+
+            <!--  分页 -->
+            <template>
+                <div class="block" align="right">
+                    <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange"
+                        :current-page="currentPage" :page-sizes="[3, 4, 5, 5]" :page-size="pageSize"
+                        layout="total, sizes, prev, pager, next, jumper" :total="total">
+                    </el-pagination>
+                </div>
+            </template>
+        </div>
+
+        <!--修改选课-->
+        <el-dialog title="修改选课" :visible.sync="dialogFormVisible1">
+            <el-form ref="ruleForm" :model="ruleForm" label-width="80px">
+                <el-form-item label="课程名称" prop="cid">
+                    <el-select v-model="ruleForm.cid" placeholder="请选择课程">
+                        <el-option v-for="item in courseNames" :value="item.cid" :label="item.courseName"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="选课人">
+                    <el-input v-model="ruleForm.user.name" style="width: 210px;"></el-input>
+                </el-form-item>
+                <el-form-item label="联系方式">
+                    <el-input v-model="ruleForm.user.phone" style="width: 210px;" disabled></el-input>
+                </el-form-item>
+            </el-form>
+            <span slot="footer" class="dialog-footer">
+                <el-button @click="dialogFormVisible1 = false">取 消</el-button>
+                <el-button type="primary" @click="submitForm('ruleForm')">确 定</el-button>
+            </span>
+        </el-dialog>
+
+        <!--结尾-->
+        <!--查看选课-->
+        <el-dialog title="选课信息" :visible.sync="dialogFormVisible2">
+            <el-form ref="ruleForm" :model="ruleForm" label-width="80px">
+                <el-form-item label="课程名称">
+                    <el-input v-model="ruleForm.course.courseName" style="width: 210px;"></el-input>
+                </el-form-item>
+                <el-form-item label="课程类型">
+                    <el-input v-if="ruleForm.course.courseType==1" style="width: 210px;" value="Java"></el-input>
+                    <el-input v-if="ruleForm.course.courseType==2" style="width: 210px;" value="数据库"></el-input>
+                    <el-input v-if="ruleForm.course.courseType==3" style="width: 210px;" value="前端"></el-input>
+                </el-form-item>
+                <el-form-item label="课程价格">
+                    <el-input v-model="ruleForm.course.coursePrice" style="width: 210px;"></el-input>
+                </el-form-item>
+                <el-form-item label="选课人">
+                    <el-input v-model="ruleForm.user.name" style="width: 210px;"></el-input>
+                </el-form-item>
+                <el-form-item label="联系方式">
+                    <el-input v-model="ruleForm.user.phone" style="width: 210px;"></el-input>
+                </el-form-item>
+            </el-form>
+        </el-dialog>
+        <!--结尾-->
+
+
+    </div>
+
+</body>
+<script>
+    axios.defaults.withCredentials = true
+    new Vue({
+        el: "#app",
+        data: {
+            /* 分页参数 */
+            tableData: [],
+            currentPage: 1,
+            total: '',
+            pageSize: 3,
+            totalPage:'',
+            
+            /* 条件查询 */
+            search: '',
+            //批量删除存放选中的复选框
+            multipleSelection: [],
+            //批量删除存放的uid
+            delarr: [],
+            /*选项卡*/
+            inputVisible: true,
+            disable: false,
+            //修改的对话框
+            dialogFormVisible1: false,
+            //详情的对话框
+            dialogFormVisible2: false,
+            //表单字段
+            ruleForm: {
+                cid: '',
+                course: '',
+                user: '',
+                courseImage: '',
+                courseVideo: ''
+            },
+            courseNames: []
+        },
+        methods: {
+            
+            handleClose() {
+             
+            },
+          
+            handleEdit(index, row) {
+               
+            },
+          
+            handleDelete(index, row) {
+               
+            },
+          
+            // 分页查询展示
+            findAllByPage() {
+                // 1. 拼接路径
+                let url = "http://localhost:8080/findUserCourseByPage"
+
+                url += "?currentPage="+this.currentPage
+
+                url += "&pageSize="+this.pageSize
+
+                if(this.search!=null && this.search.trim()!=""){
+                    url += "&search="+this.search
+                }
+                // 2. 发送请求
+                axios.get(url).then(resp => {
+                    if(resp.data == 'fail'){
+                        this.$message({
+                            type:"warning",
+                            message:'没有查询到数据'
+                        })
+                    }else{
+                        this.tableData = resp.data;
+                        console.log(this.tableData);
+                       /* this.currentPage = resp.data.data.currentPage
+                        this.pageSize = resp.data.data.pageSize
+                        this.totalPage = resp.data.data.totalPage
+                        this.total = resp.data.data.totalCount*/
+                    }
+                })
+            },
+         
+            handleSizeChange(val) {
+               
+            },
+          
+            handleCurrentChange(val) {
+          
+            },
+        
+            handleSelectionChange(val) {
+              
+            },
+          
+            delAll() {
+              
+            },
+         
+            findAllCourse() {
+             
+
+            },
+            submitForm(formName) {
+              
+            }
+        },
+        created(){
+            this. findAllByPage() 
+        }
+        
+    })
+</script>
+
+</html>
